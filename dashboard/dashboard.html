@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telco Churn Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fffdf8;--ink:#1b2430;--mut:#6b7280;--line:#e4dfd3;--hot:#d6402f;--cool:#1f6f8b;--ok:#2f8f5b;--r:14px;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161d;--card:#18212b;--ink:#eaeef2;--mut:#93a0ae;--line:#283442;--hot:#ff6b57;--cool:#58b4d1;--ok:#5fcf93}}
+:root[data-theme="dark"]{--bg:#10161d;--card:#18212b;--ink:#eaeef2;--mut:#93a0ae;--line:#283442;--hot:#ff6b57;--cool:#58b4d1;--ok:#5fcf93}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.w{position:relative;max-width:1180px;margin:0 auto;padding:22px 16px 40px}
+h1{font-size:clamp(26px,4.5vw,44px);line-height:1;margin:0 0 6px;font-weight:800;letter-spacing:-.03em}h1 span{color:var(--hot)}
+h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px;color:var(--mut);font-weight:600}
+.sub{color:var(--mut);max-width:720px;margin:0 0 18px}
+.g{display:grid;gap:14px}.k4{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.c{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;overflow-x:auto}
+.kpi b{display:block;font:600 30px "JetBrains Mono",monospace;letter-spacing:-.04em}.kpi small{color:var(--mut)}
+.hot{color:var(--hot)}.cool{color:var(--cool)}
+.f{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}.f label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+select,input[type=range]{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}input[type=range]{padding:0;width:100%}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 11px;border-radius:99px;cursor:pointer}button.on{background:var(--ink);color:var(--bg)}
+.row{display:grid;grid-template-columns:130px 1fr 92px;gap:8px;align-items:center;margin:7px 0;font-size:13px}
+.bar{height:16px;background:var(--line);border-radius:5px;position:relative;overflow:hidden}.bar i{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--hot);transition:width .35s}
+.bar i.b{background:var(--cool)}.row em{font:600 12px "JetBrains Mono",monospace;font-style:normal;text-align:right}
+.ln{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.7}
+.pick{outline:2px solid var(--ok);outline-offset:2px;border-radius:5px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:5px 7px;text-align:right;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}
+.cm{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;font:600 13px "JetBrains Mono",monospace}.cm div{padding:12px;border-radius:9px;text-align:center}.cm small{display:block;font:400 11px "Bricolage Grotesque",sans-serif;opacity:.85}
+.tp{background:#2f8f5b33}.tn{background:#1f6f8b33}.fp{background:#e0a02a33}.fn{background:#d6402f33}
+.note{font-size:12px;color:var(--mut);margin-top:10px}
+.tb{position:absolute;right:14px;top:14px}
+</style></head><body><div class="w">
+<button class="tb" id="th" aria-label="Toggle theme">◐</button>
+<h1>Telco churn <span>command center</span></h1>
+<p class="sub">Interactive view of the notebook results: 7,043 customers, 6 models. All figures are associations in a historical sample, not proof of cause.</p>
+<div class="g k4" id="kpi"></div>
+<h2 style="margin-top:26px">Segment explorer</h2>
+<div class="c"><div class="f" id="flt"></div><div class="g g2"><div id="ch0"></div><div id="ch1"></div><div id="ch2"></div><div id="ch3"></div></div>
+<div class="note">Dashed line = overall churn rate (26.5%). Filters combine; every chart re-computes from the filtered customers.</div></div>
+<h2 style="margin-top:26px">Model scores (test set, 1,409 customers)</h2>
+<div class="g g2"><div class="c"><div class="f" id="mm"></div><div id="mb"></div><div class="note">Selected: Logistic Regression (green outline). Top-3 models are statistically tied on AUC (gap 0.004 vs fold std ≈ 0.012). Accuracy is shown but not used to choose.</div></div>
+<div class="c"><table id="mt"></table><div class="note">Recall/precision/F1/accuracy at threshold 0.50. CV AUC = 5-fold on training data.</div></div></div>
+<h2 style="margin-top:26px">Threshold &amp; lift (Logistic Regression)</h2>
+<div class="g g2"><div class="c"><label style="font-size:12px;color:var(--mut)">Threshold: <b id="tv" style="color:var(--ink)"></b></label><input type="range" id="ts" min="0" max="12" value="3"><div id="tb"></div>
+<div class="note">Out-of-fold training predictions. Chosen threshold 0.35 maximises F2 (assumes missing a churner costs more than a wasted offer).</div></div>
+<div class="c"><div class="f"><button class="on" data-t="0">Test @ 0.50</button><button data-t="1">Test @ 0.35</button></div><div id="cm"></div><div id="lf" style="margin-top:12px"></div></div></div>
+<h2 style="margin-top:26px">What drives the model</h2>
+<div class="c"><div id="fi"></div><div class="note">Permutation importance: drop in test ROC-AUC when a feature is shuffled. Correlated features share credit. Importance ≠ causation.</div></div>
+<p class="note" style="margin-top:22px">Source: IBM Telco Customer Churn sample dataset. Decision-support demonstration, not an automated decision system.</p>
+</div>
+<script>
+const D={"cells":[[0,0,0,0,282,142],[0,0,0,1,85,30],[0,0,0,2,77,14],[0,0,0,3,30,6],[0,0,1,0,255,102],[0,0,1,1,64,9],[0,0,1,2,43,2],[0,0,1,3,5,0],[0,0,2,0,79,21],[0,0,2,1,39,7],[0,0,2,2,57,9],[0,0,2,3,22,2],[0,0,3,0,74,28],[0,0,3,1,44,9],[0,0,3,2,50,11],[0,0,3,3,17,2],[0,1,0,0,631,449],[0,1,0,1,255,150],[0,1,0,2,286,140],[0,1,0,3,135,50],[0,1,1,0,123,77],[0,1,1,1,37,14],[0,1,1,2,31,11],[0,1,1,3,10,0],[0,1,2,0,87,71],[0,1,2,1,71,23],[0,1,2,2,102,42],[0,1,2,3,67,13],[0,1,3,0,75,46],[0,1,3,1,62,28],[0,1,3,2,102,33],[0,1,3,3,54,15],[0,2,0,0,41,11],[0,2,0,1,15,2],[0,2,0,2,13,0],[0,2,1,0,263,63],[0,2,1,1,40,2],[0,2,1,2,21,1],[0,2,1,3,1,1],[0,2,2,0,42,9],[0,2,2,1,10,3],[0,2,2,2,13,1],[0,2,3,0,42,5],[0,2,3,1,15,1],[0,2,3,2,7,0],[0,2,3,3,1,0],[1,0,0,0,11,3],[1,0,0,1,15,1],[1,0,0,2,46,2],[1,0,0,3,44,5],[1,0,1,0,18,2],[1,0,1,1,28,3],[1,0,1,2,65,9],[1,0,1,3,26,0],[1,0,2,0,4,1],[1,0,2,1,19,3],[1,0,2,2,53,3],[1,0,2,3,69,4],[1,0,3,0,9,1],[1,0,3,1,17,4],[1,0,3,2,77,8],[1,0,3,3,69,4],[1,1,0,0,4,1],[1,1,0,1,4,1],[1,1,0,2,59,17],[1,1,0,3,129,32],[1,1,1,0,2,1],[1,1,1,1,5,1],[1,1,1,2,10,4],[1,1,1,3,19,1],[1,1,2,1,6,2],[1,1,2,2,50,4],[1,1,2,3,101,17],[1,1,3,0,1,0],[1,1,3,1,8,0],[1,1,3,2,35,6],[1,1,3,3,106,17],[1,2,0,0,8,0],[1,2,0,1,4,0],[1,2,0,2,12,1],[1,2,0,3,11,1],[1,2,1,0,49,2],[1,2,1,1,54,0],[1,2,1,2,46,0],[1,2,1,3,15,0],[1,2,2,0,8,1],[1,2,2,1,20,1],[1,2,2,2,37,1],[1,2,2,3,24,1],[1,2,3,0,10,1],[1,2,3,1,17,0],[1,2,3,2,28,0],[1,2,3,3,21,0],[2,0,0,1,1,0],[2,0,0,2,8,0],[2,0,0,3,49,4],[2,0,1,0,12,0],[2,0,1,1,14,0],[2,0,1,2,22,0],[2,0,1,3,61,0],[2,0,2,0,2,0],[2,0,2,1,5,0],[2,0,2,2,18,0],[2,0,2,3,199,3],[2,0,3,0,4,0],[2,0,3,1,5,0],[2,0,3,2,31,1],[2,0,3,3,197,4],[2,1,0,1,1,0],[2,1,0,2,10,2],[2,1,0,3,81,7],[2,1,1,2,5,1],[2,1,1,3,16,0],[2,1,2,2,11,0],[2,1,2,3,151,15],[2,1,3,2,9,0],[2,1,3,3,145,6],[2,2,0,0,1,0],[2,2,0,2,9,0],[2,2,0,3,8,0],[2,2,1,0,32,0],[2,2,1,1,44,0],[2,2,1,2,76,1],[2,2,1,3,100,1],[2,2,2,0,7,0],[2,2,2,1,7,0],[2,2,2,2,35,0],[2,2,2,3,129,1],[2,2,3,0,10,0],[2,2,3,1,13,0],[2,2,3,2,40,1],[2,2,3,3,127,1]],"models":[{"Model":"Baseline (always 'No churn')","Accuracy":0.735,"Precision":0.0,"Recall":0.0,"F1":0.0,"ROC-AUC":0.5,"PR-AUC":0.265,"CV AUC":0.0},{"Model":"Logistic Regression","Accuracy":0.738,"Precision":0.504,"Recall":0.783,"F1":0.614,"ROC-AUC":0.841,"PR-AUC":0.627,"CV AUC":0.846},{"Model":"Decision Tree","Accuracy":0.739,"Precision":0.505,"Recall":0.781,"F1":0.613,"ROC-AUC":0.836,"PR-AUC":0.615,"CV AUC":0.833},{"Model":"Random Forest","Accuracy":0.748,"Precision":0.517,"Recall":0.791,"F1":0.625,"ROC-AUC":0.844,"PR-AUC":0.656,"CV AUC":0.848},{"Model":"KNN","Accuracy":0.782,"Precision":0.592,"Recall":0.575,"F1":0.583,"ROC-AUC":0.831,"PR-AUC":0.614,"CV AUC":0.837},{"Model":"SVM (RBF)","Accuracy":0.787,"Precision":0.594,"Recall":0.626,"F1":0.609,"ROC-AUC":0.834,"PR-AUC":0.631,"CV AUC":0.842},{"Model":"Gradient Boosting","Accuracy":0.799,"Precision":0.66,"Recall":0.503,"F1":0.571,"ROC-AUC":0.846,"PR-AUC":0.664,"CV AUC":0.85}]};
+const L={c:['Month-to-month','One year','Two year'],i:['DSL','Fiber optic','No internet'],p:['Electronic check','Mailed check','Bank transfer (auto)','Credit card (auto)'],t:['0–12 mo','13–24 mo','25–48 mo','49–72 mo']};
+const OV=1869/7043,$=id=>document.getElementById(id),pc=x=>(x*100).toFixed(1)+'%',nf=x=>x.toLocaleString('en-US');
+const F={c:-1,i:-1,p:-1,t:-1};
+function sel(k,t){return `<label>${t}<select data-k="${k}"><option value="-1">All</option>${L[k].map((v,j)=>`<option value="${j}">${v}</option>`).join('')}</select></label>`}
+$('flt').innerHTML=sel('c','Contract')+sel('i','Internet')+sel('p','Payment')+sel('t','Tenure');
+$('flt').onchange=e=>{F[e.target.dataset.k]=+e.target.value;draw()};
+function sub(ex){let n=0,k=0;D.cells.forEach(r=>{const m={c:r[0],i:r[1],p:r[2],t:r[3]};for(const a in F)if(a!==ex&&F[a]>=0&&m[a]!==F[a])return;n+=r[4];k+=r[5]});return[n,k]}
+function bars(el,key,title){const rows=L[key].map((l,j)=>{const m={...F};const [n,k]=(()=>{let n=0,k=0;D.cells.forEach(r=>{const v={c:r[0],i:r[1],p:r[2],t:r[3]};if(v[key]!==j)return;for(const a in F)if(a!==key&&F[a]>=0&&v[a]!==F[a])return;n+=r[4];k+=r[5]});return[n,k]})();return[l,n,n?k/n:0]});
+$(el).innerHTML=`<h2>${title}</h2>`+rows.map(([l,n,r])=>`<div class="row"><span>${l}</span><div class="bar"><i style="width:${Math.min(100,r*100/0.7)}%"></i><b class="ln" style="left:${OV*100/0.7}%"></b></div><em>${n?pc(r):'–'} <small style="color:var(--mut)">n=${nf(n)}</small></em></div>`).join('')}
+function draw(){const[n,k]=sub();const r=n?k/n:0;
+$('kpi').innerHTML=[['Customers',nf(n),''],['Churned',nf(k),'hot'],['Churn rate',pc(r),r>OV?'hot':'cool'],['vs overall 26.5%',(r>=OV?'+':'')+((r-OV)*100).toFixed(1)+' pts',r>OV?'hot':'cool']].map(a=>`<div class="c kpi"><small>${a[0]}</small><b class="${a[2]}">${a[1]}</b></div>`).join('');
+bars('ch0','c','Churn by contract');bars('ch1','t','Churn by tenure');bars('ch2','i','Churn by internet service');bars('ch3','p','Churn by payment method')}
+draw();
+let met='ROC-AUC';const M=D.models.filter(m=>m.Model.indexOf('Baseline')<0),BL=D.models.find(m=>m.Model.indexOf('Baseline')>=0);
+$('mm').innerHTML=['ROC-AUC','PR-AUC','Recall','Precision','F1','Accuracy'].map(m=>`<button data-m="${m}" class="${m===met?'on':''}">${m}</button>`).join('');
+$('mm').onclick=e=>{if(e.target.dataset.m){met=e.target.dataset.m;[...$('mm').children].forEach(b=>b.classList.toggle('on',b.dataset.m===met));mb()}};
+function mb(){const s=[...M].sort((a,b)=>b[met]-a[met]);$('mb').innerHTML=s.map(m=>`<div class="row ${m.Model==='Logistic Regression'?'pick':''}"><span>${m.Model}</span><div class="bar"><i class="b" style="width:${m[met]*100}%"></i><b class="ln" style="left:${BL[met]*100}%"></b></div><em>${m[met].toFixed(3)}</em></div>`).join('')+`<div class="note">Vertical line = baseline (${BL[met].toFixed(3)}).</div>`}mb();
+$('mt').innerHTML='<tr><th>Model</th><th>AUC</th><th>CV AUC</th><th>Rec</th><th>Prec</th><th>F1</th><th>Acc</th></tr>'+M.map(m=>`<tr><td>${m.Model}</td><td>${m['ROC-AUC']}</td><td>${m['CV AUC']}</td><td>${m.Recall}</td><td>${m.Precision}</td><td>${m.F1}</td><td>${m.Accuracy}</td></tr>`).join('');
+const T=[[.2,.386,.953,.549,.737,.655],[.25,.404,.937,.565,.742,.615],[.3,.424,.926,.582,.749,.579],[.35,.447,.903,.598,.750,.536],[.4,.470,.870,.610,.743,.491],[.45,.492,.833,.618,.731,.450],[.5,.516,.800,.627,.721,.411],[.55,.541,.766,.634,.707,.376],[.6,.570,.719,.636,.683,.335],[.65,.595,.660,.626,.646,.294],[.7,.629,.591,.609,.598,.249],[.75,.662,.518,.582,.542,.208],[.8,.709,.398,.510,.436,.149]];
+function th(){const r=T[+$('ts').value];$('tv').textContent=r[0].toFixed(2);const it=[['Precision',r[1],'b'],['Recall',r[2],''],['F1',r[3],'b'],['F2',r[4],'b'],['Customers flagged',r[5],'']];
+$('tb').innerHTML=it.map(a=>`<div class="row"><span>${a[0]}</span><div class="bar"><i class="${a[2]}" style="width:${a[1]*100}%"></i></div><em>${a[1].toFixed(3)}</em></div>`).join('')}
+$('ts').oninput=th;th();
+const CM=[[293,288,81,747],[337,421,37,614]];
+function cm(i){const c=CM[i];$('cm').innerHTML=`<div class="cm"><div class="tp">${c[0]}<small>Churners caught (TP)</small></div><div class="fp">${c[1]}<small>False alarms (FP)</small></div><div class="fn">${c[2]}<small>Churners missed (FN)</small></div><div class="tn">${c[3]}<small>Stayers left alone (TN)</small></div></div>`}
+cm(0);
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b));cm(+b.dataset.t)});
+$('lf').innerHTML='<h2>Lift: contact the riskiest…</h2><table><tr><th>Top %</th><th>Customers</th><th>Churners reached</th><th>Precision</th></tr>'+[[10,141,28.3,75.2],[20,282,50.0,66.3],[30,423,64.4,57.0],[40,564,77.3,51.2],[50,704,87.2,46.3]].map(r=>`<tr><td>${r[0]}%</td><td>${r[1]}</td><td>${r[2]}%</td><td>${r[3]}%</td></tr>`).join('')+'</table>';
+const FI=[['tenure',.1617],['MonthlyCharges',.1277],['InternetService',.1263],['Contract',.0411],['NumAddOns',.0262],['TotalCharges',.0136],['MultipleLines',.0121],['OnlineSecurity',.0102],['StreamingMovies',.0100],['StreamingTV',.0094],['TechSupport',.0092],['OnlineBackup',.0059]];
+$('fi').innerHTML=FI.map(a=>`<div class="row"><span>${a[0]}</span><div class="bar"><i style="width:${a[1]/.17*100}%;background:var(--ok)"></i></div><em>${a[1].toFixed(3)}</em></div>`).join('');
+$('th').onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).getPropertyValue('--bg').trim()==='#10161d';r.dataset.theme=d?'light':'dark'};
+</script></body></html>

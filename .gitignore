@@ -1,0 +1,6 @@
+.ipynb_checkpoints/
+__pycache__/
+.venv/
+.env
+*.key
+# Add any private/client data files here before committing
